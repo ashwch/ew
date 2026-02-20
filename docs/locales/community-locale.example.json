@@ -1,0 +1,36 @@
+{
+  "locale": "es-ES",
+  "loader": {
+    "thinking_fit": [
+      "pensando en un comando que encaje",
+      "pensando en un comando claro y seguro"
+    ],
+    "ranking": [
+      "clasificando comandos por seguridad primero",
+      "clasificando por confianza y claridad"
+    ],
+    "history": [
+      "buscando en tu historial de shell"
+    ],
+    "debugging": [
+      "depurando el comando fallido"
+    ],
+    "default": [
+      "{label}",
+      "{label} (cocinando)",
+      "{label} (casi listo)"
+    ]
+  },
+  "self": {
+    "show_config": ["mostrar configuracion", "mostrar ajustes"],
+    "setup_hooks": ["instalar hooks", "activar hooks"],
+    "diagnose": ["ejecutar doctor", "diagnosticar"],
+    "provider": ["proveedor", "cambiar proveedor"],
+    "ui": ["interfaz", "ui", "backend"],
+    "mode": ["modo"],
+    "ui_upgrade": ["mejor", "cambiar", "mejorar"],
+    "persist": ["guardar", "recordar", "default"],
+    "imperative": ["cambiar", "usar", "activar", "desactivar"],
+    "question": ["?", "como ", "que ", "cual "]
+  }
+}

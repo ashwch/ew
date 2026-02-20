@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build and package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          ARCHIVE: ${{ matrix.archive }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          bin_ext=""
+          if [ "$GOOS" = "windows" ]; then
+            bin_ext=".exe"
+          fi
+
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags "-X main.version=${VERSION}" -o "ew${bin_ext}" ./cmd/ew
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -o "_ew${bin_ext}" ./cmd/_ew
+
+          asset="ew_${VERSION}_${GOOS}_${GOARCH}.${ARCHIVE}"
+          if [ "$ARCHIVE" = "zip" ]; then
+            zip -q "$asset" "ew${bin_ext}" "_ew${bin_ext}"
+          else
+            tar -czf "$asset" "ew${bin_ext}" "_ew${bin_ext}"
+          fi
+
+          mv "$asset" dist/
+          rm -f "ew${bin_ext}" "_ew${bin_ext}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum ew_* > checksums.txt
+
+      - name: Detect release channel
+        id: channel
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "name=beta" >> "${GITHUB_OUTPUT}"
+            echo "prerelease=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "name=stable" >> "${GITHUB_OUTPUT}"
+            echo "prerelease=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Render Homebrew formula
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ./scripts/render_formula.sh "${VERSION}" "dist/checksums.txt" "dist/ew.rb"
+
+      - name: Render Homebrew beta formula
+        if: steps.channel.outputs.prerelease == 'true'
+        run: |
+          set -euo pipefail
+          sed 's/^class Ew < Formula$/class EwATBeta < Formula/' "dist/ew.rb" > "dist/ew@beta.rb"
+
+      - name: Prepare release notes
+        env:
+          VERSION: ${{ github.ref_name }}
+          CHANNEL: ${{ steps.channel.outputs.name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ "${CHANNEL}" == "beta" ]]; then
+            brew_formula="ew@beta.rb"
+            tap_formula="Formula/ew@beta.rb"
+          else
+            brew_formula="ew.rb"
+            tap_formula="Formula/ew.rb"
+          fi
+          cat > "dist/release-notes.md" <<EOF
+${VERSION} (${CHANNEL})
+
+Install via curl:
+curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | VERSION=${VERSION} bash
+
+Install via Homebrew release formula:
+brew install https://github.com/${REPO}/releases/download/${VERSION}/${brew_formula}
+
+Tap maintainer update:
+./scripts/update_tap_formula.sh ${VERSION} /path/to/homebrew-tap ${CHANNEL}
+# updates ${tap_formula}
+
+Release docs:
+- https://github.com/${REPO}/blob/main/docs/RELEASING.md
+- https://github.com/${REPO}/blob/main/docs/HOMEBREW.md
+EOF
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: dist/release-notes.md
+          prerelease: ${{ steps.channel.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          files: |
+            dist/ew_*
+            dist/checksums.txt
+            dist/ew.rb
+            dist/ew@beta.rb

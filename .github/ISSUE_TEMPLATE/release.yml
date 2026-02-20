@@ -1,0 +1,50 @@
+name: Release
+description: Track a beta or stable ew release end-to-end.
+title: "release: vX.Y.Z"
+labels:
+  - release
+body:
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Release channel
+      options:
+        - beta
+        - stable
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version tag
+      description: Use vX.Y.Z for stable or vX.Y.Z-beta.N for beta.
+      placeholder: v0.1.0-beta.1
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        Use the runbook and checklist while executing this issue:
+        - `docs/RELEASING.md`
+        - `docs/RELEASE-CHECKLIST.md`
+        - `docs/HOMEBREW.md`
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Local gates
+      options:
+        - label: Changelog updated for this version.
+        - label: `./scripts/preflight.sh <version>` passed.
+        - label: Tag pushed and release workflow succeeded.
+
+  - type: checkboxes
+    id: distribution
+    attributes:
+      label: Distribution
+      options:
+        - label: Release assets verified (archives + checksums + formulas).
+        - label: Homebrew tap formula updated and pushed.
+        - label: Curl + Homebrew smoke tests passed.

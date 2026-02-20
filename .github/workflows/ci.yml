@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - '1.25.x'
+          - '1.26.x'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: |
+          go test ./...
+          go test ./cmd/_ew
+
+      - name: Vet
+        run: |
+          go vet ./...
+          go vet ./cmd/_ew
+
+      - name: Race tests
+        run: |
+          go test -race ./...
+          go test -race ./cmd/_ew
