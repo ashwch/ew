@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.1-beta.2] - 2026-02-20
+
+### Fixed
+- Release workflow YAML parsing issue that prevented GitHub Release jobs from running.
+
+### Changed
+- README logo rendering is now fixed-size for cleaner GitHub display.
+
 ## [0.0.1-beta.1] - 2026-02-20
 
 ### Added
