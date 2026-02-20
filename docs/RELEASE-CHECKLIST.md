@@ -42,20 +42,25 @@ git push origin vX.Y.Z
   - `ew_*` archives
   - `checksums.txt`
   - `ew.rb`
-  - `ew@beta.rb` (beta only)
+  - `ew-beta.rb` (beta only)
 
 ## 4) Homebrew Update
 
-- [ ] Update tap formula with helper script:
+- [ ] Publish tap formula with one command (update + commit + push + remote verify):
 
 ```bash
-./scripts/update_tap_formula.sh vX.Y.Z /path/to/homebrew-tap
+./scripts/publish_tap_formula.sh vX.Y.Z /path/to/homebrew-tap
 ```
 
-- [ ] Commit and push formula change in tap repo:
+- [ ] If the one-command publish flow is unavailable, fallback manually:
+  - `./scripts/update_tap_formula.sh vX.Y.Z /path/to/homebrew-tap`
+  - commit and push in tap repo:
   - stable: `Formula/ew.rb`
-  - beta: `Formula/ew@beta.rb`
+  - beta: `Formula/ew-beta.rb`
 - [ ] Keep stable `Formula/ew.rb` on the latest stable tag only.
+- [ ] Confirm remote tap has the expected channel formula:
+  - stable: `gh api repos/ashwch/homebrew-tap/contents/Formula/ew.rb?ref=main --jq '.download_url'`
+  - beta: `gh api repos/ashwch/homebrew-tap/contents/Formula/ew-beta.rb?ref=main --jq '.download_url'`
 
 ## 5) Post-Publish Smoke Test
 
@@ -67,7 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/ashwch/ew/main/scripts/install.sh |
 
 - [ ] Verify Homebrew install:
   - stable: `brew install <tap>/ew`
-  - beta: `brew install <tap>/ew@beta`
+  - beta: `brew install <tap>/ew-beta`
 - [ ] Verify runtime:
 
 ```bash

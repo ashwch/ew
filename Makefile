@@ -29,3 +29,9 @@ vet:
 .PHONY: preflight
 preflight:
 	./scripts/preflight.sh $(VERSION)
+
+.PHONY: tap-publish
+tap-publish:
+	@if [ -z "$(VERSION)" ] || [ "$(VERSION)" = "dev" ]; then echo "set VERSION=vX.Y.Z"; exit 1; fi
+	@if [ -z "$(TAP_DIR)" ]; then echo "set TAP_DIR=/path/to/homebrew-tap"; exit 1; fi
+	./scripts/publish_tap_formula.sh $(VERSION) $(TAP_DIR) $(CHANNEL)

@@ -67,7 +67,7 @@ Beta:
 
 ```bash
 brew tap ashwch/homebrew-tap
-brew install ashwch/homebrew-tap/ew@beta
+brew install ashwch/homebrew-tap/ew-beta
 ```
 
 ### Build from source

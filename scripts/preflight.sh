@@ -45,6 +45,7 @@ required=(
   "scripts/install.sh"
   "scripts/render_formula.sh"
   "scripts/update_tap_formula.sh"
+  "scripts/publish_tap_formula.sh"
   "Formula/ew.rb"
 )
 for file in "${required[@]}"; do
@@ -61,7 +62,7 @@ if ! grep -q "^## \[${version#v}\] " CHANGELOG.md; then
 fi
 
 echo "==> checking executable scripts"
-for script in scripts/install.sh scripts/render_formula.sh scripts/update_tap_formula.sh; do
+for script in scripts/install.sh scripts/render_formula.sh scripts/update_tap_formula.sh scripts/publish_tap_formula.sh; do
   if [[ ! -x "${script}" ]]; then
     echo "script is not executable: ${script}" >&2
     exit 1

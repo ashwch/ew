@@ -117,7 +117,7 @@ jobs:
         if: steps.channel.outputs.prerelease == 'true'
         run: |
           set -euo pipefail
-          sed 's/^class Ew < Formula$/class EwATBeta < Formula/' "dist/ew.rb" > "dist/ew@beta.rb"
+          sed 's/^class Ew < Formula$/class EwBeta < Formula/' "dist/ew.rb" > "dist/ew-beta.rb"
 
       - name: Prepare release notes
         env:
@@ -127,8 +127,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${CHANNEL}" == "beta" ]]; then
-            brew_formula="ew@beta.rb"
-            tap_formula="Formula/ew@beta.rb"
+            brew_formula="ew-beta.rb"
+            tap_formula="Formula/ew-beta.rb"
           else
             brew_formula="ew.rb"
             tap_formula="Formula/ew.rb"
@@ -143,7 +143,7 @@ jobs:
             echo "brew install https://github.com/${REPO}/releases/download/${VERSION}/${brew_formula}"
             echo
             echo "Tap maintainer update:"
-            echo "./scripts/update_tap_formula.sh ${VERSION} /path/to/homebrew-tap ${CHANNEL}"
+            echo "./scripts/publish_tap_formula.sh ${VERSION} /path/to/homebrew-tap ${CHANNEL}"
             echo "# updates ${tap_formula}"
             echo
             echo "Release docs:"
@@ -163,4 +163,4 @@ jobs:
             dist/ew_*
             dist/checksums.txt
             dist/ew.rb
-            dist/ew@beta.rb
+            dist/ew-beta.rb

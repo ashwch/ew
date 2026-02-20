@@ -14,7 +14,7 @@ As of February 20, 2026, `ew` ships as **beta-first**:
 
 | Channel | Tag pattern | GitHub release type | Homebrew formula |
 | --- | --- | --- | --- |
-| beta | `vX.Y.Z-beta.N` | prerelease | `ew@beta.rb` |
+| beta | `vX.Y.Z-beta.N` | prerelease | `ew-beta.rb` |
 | stable | `vX.Y.Z` | stable | `ew.rb` |
 
 Examples:
@@ -42,6 +42,7 @@ Keep these in sync before tagging:
 - `scripts/preflight.sh`
 - `scripts/render_formula.sh`
 - `scripts/update_tap_formula.sh`
+- `scripts/publish_tap_formula.sh`
 
 ## End-to-End Flow
 
@@ -86,20 +87,24 @@ git push origin v0.1.0-beta.1
   - `ew_<version>_windows_amd64.zip`
 - `checksums.txt`
 - `ew.rb`
-- `ew@beta.rb` (beta tags only)
+- `ew-beta.rb` (beta tags only)
 
 ### 5) Update Homebrew tap
 
-Use the helper script:
+Preferred one-command publish flow:
+
+```bash
+./scripts/publish_tap_formula.sh v0.1.0-beta.1 /path/to/homebrew-tap beta
+```
+
+This command updates the formula, commits, pushes, and verifies the remote tap file.
+
+Manual fallback:
 
 ```bash
 ./scripts/update_tap_formula.sh v0.1.0-beta.1 /path/to/homebrew-tap beta
-```
-
-Then from the tap repo:
-
-```bash
-git add Formula/ew@beta.rb
+cd /path/to/homebrew-tap
+git add Formula/ew-beta.rb
 git commit -m "ew: beta v0.1.0-beta.1"
 git push
 ```
@@ -118,7 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/ashwch/ew/main/scripts/install.sh |
 
 Homebrew:
 
-- beta: `brew install <tap>/ew@beta`
+- beta: `brew install <tap>/ew-beta`
 - stable: `brew install <tap>/ew`
 
 Runtime checks:

@@ -46,9 +46,11 @@ fi
 case "${channel}" in
   stable)
     formula_file="ew.rb"
+    release_formula_candidates=("ew.rb")
     ;;
   beta)
-    formula_file="ew@beta.rb"
+    formula_file="ew-beta.rb"
+    release_formula_candidates=("ew-beta.rb" "ew@beta.rb")
     ;;
   *)
     echo "invalid channel: ${channel} (expected stable|beta)" >&2
@@ -73,13 +75,32 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Downloading ${formula_file} from ${repo} ${version}"
-gh release download "${version}" \
-  --repo "${repo}" \
-  --pattern "${formula_file}" \
-  --dir "${tmpdir}"
+downloaded_formula_file=""
+for candidate in "${release_formula_candidates[@]}"; do
+  if gh release download "${version}" \
+    --repo "${repo}" \
+    --pattern "${candidate}" \
+    --dir "${tmpdir}" >/dev/null 2>&1; then
+    downloaded_formula_file="${candidate}"
+    break
+  fi
+done
+
+if [[ -z "${downloaded_formula_file}" ]]; then
+  echo "failed to download formula for ${version}; tried: ${release_formula_candidates[*]}" >&2
+  exit 1
+fi
 
 mkdir -p "${tap_dir}/Formula"
-install -m 0644 "${tmpdir}/${formula_file}" "${tap_dir}/Formula/${formula_file}"
+if [[ "${channel}" == "beta" ]]; then
+  sed \
+    -e 's/^class EwATBeta < Formula$/class EwBeta < Formula/' \
+    -e 's/^class Ew@beta < Formula$/class EwBeta < Formula/' \
+    "${tmpdir}/${downloaded_formula_file}" > "${tap_dir}/Formula/${formula_file}"
+  chmod 0644 "${tap_dir}/Formula/${formula_file}"
+else
+  install -m 0644 "${tmpdir}/${downloaded_formula_file}" "${tap_dir}/Formula/${formula_file}"
+fi
 
 echo "Updated ${tap_dir}/Formula/${formula_file}"
 echo "Next steps:"
