@@ -1,6 +1,6 @@
 # ew
 
-![ew logo](assets/logo/ew-mark.svg)
+<img src="assets/logo/ew-mark.svg" alt="ew logo" width="160" />
 
 `ew` is a plain-English shell copilot with one public command:
 
