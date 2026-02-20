@@ -133,23 +133,23 @@ jobs:
             brew_formula="ew.rb"
             tap_formula="Formula/ew.rb"
           fi
-          cat > "dist/release-notes.md" <<EOF
-${VERSION} (${CHANNEL})
-
-Install via curl:
-curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | VERSION=${VERSION} bash
-
-Install via Homebrew release formula:
-brew install https://github.com/${REPO}/releases/download/${VERSION}/${brew_formula}
-
-Tap maintainer update:
-./scripts/update_tap_formula.sh ${VERSION} /path/to/homebrew-tap ${CHANNEL}
-# updates ${tap_formula}
-
-Release docs:
-- https://github.com/${REPO}/blob/main/docs/RELEASING.md
-- https://github.com/${REPO}/blob/main/docs/HOMEBREW.md
-EOF
+          {
+            echo "${VERSION} (${CHANNEL})"
+            echo
+            echo "Install via curl:"
+            echo "curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | VERSION=${VERSION} bash"
+            echo
+            echo "Install via Homebrew release formula:"
+            echo "brew install https://github.com/${REPO}/releases/download/${VERSION}/${brew_formula}"
+            echo
+            echo "Tap maintainer update:"
+            echo "./scripts/update_tap_formula.sh ${VERSION} /path/to/homebrew-tap ${CHANNEL}"
+            echo "# updates ${tap_formula}"
+            echo
+            echo "Release docs:"
+            echo "- https://github.com/${REPO}/blob/main/docs/RELEASING.md"
+            echo "- https://github.com/${REPO}/blob/main/docs/HOMEBREW.md"
+          } > "dist/release-notes.md"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
