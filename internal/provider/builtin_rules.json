@@ -1,0 +1,45 @@
+[
+  {
+    "id": "git_push_current_branch",
+    "intent": "find",
+    "match_any": [
+      "git push current branch",
+      "push to gh",
+      "push to github"
+    ],
+    "action": "run",
+    "command": "git push -u origin \"$(git branch --show-current)\"",
+    "reason": "push current branch to remote and set upstream",
+    "risk": "low",
+    "confidence": 0.95,
+    "needs_confirmation": true
+  },
+  {
+    "id": "aws_vault_clear",
+    "intent": "find",
+    "match_any": [
+      "clear aws vault",
+      "aws vault clear"
+    ],
+    "action": "run",
+    "command": "aws-vault remove --all",
+    "reason": "clear stored aws-vault sessions/profiles",
+    "risk": "low",
+    "confidence": 0.95,
+    "needs_confirmation": true
+  },
+  {
+    "id": "git_show_current_branch",
+    "intent": "find",
+    "match_any": [
+      "show current git branch",
+      "current git branch"
+    ],
+    "action": "run",
+    "command": "git branch --show-current",
+    "reason": "print current git branch name",
+    "risk": "low",
+    "confidence": 0.95,
+    "needs_confirmation": true
+  }
+]

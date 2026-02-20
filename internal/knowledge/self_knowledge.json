@@ -1,0 +1,590 @@
+{
+  "name": "ew",
+  "version": "0.0.1-beta.1",
+  "public_command": "ew",
+  "internal_command": "_ew",
+  "identity": {
+    "purpose": "Translate plain-English shell intent into safe command suggestions and optional execution.",
+    "audience": "terminal users",
+    "public_binary": "ew",
+    "internal_helper_binary": "_ew"
+  },
+  "public_cli_contract": {
+    "shape": "ew [--flags] [plain english request]",
+    "user_subcommands": "none",
+    "primary_paths": [
+      "ew <english request>            -> find/suggest",
+      "ew --execute <english request>  -> run/execute flow",
+      "ew                              -> fix last failed command",
+      "ew --show-config                -> utility action",
+      "ew --doctor                     -> utility action",
+      "ew --setup-hooks                -> utility action"
+    ],
+    "forbidden_examples": [
+      "ew run ...",
+      "ew find ...",
+      "ew config_show",
+      "ew config set ...",
+      "ew memory ..."
+    ],
+    "notes": [
+      "Do not invent user-facing subcommands.",
+      "Execution is explicit through --execute.",
+      "Without --execute, ew suggests by default.",
+      "Flags are the canonical way to persist settings with --save."
+    ]
+  },
+  "dispatch_order": [
+    {
+      "step": 1,
+      "rule": "Parse flags and prompt text."
+    },
+    {
+      "step": 2,
+      "rule": "If --version flag is set, or prompt is exactly version/--version/-v, print version and exit."
+    },
+    {
+      "step": 3,
+      "rule": "Load config, merge runtime flag overrides, and persist only when --save is set and changes exist."
+    },
+    {
+      "step": 4,
+      "rule": "Apply runtime locale (flag first, then config)."
+    },
+    {
+      "step": 5,
+      "rule": "Handle utility flags in this order: --show-config, --doctor, --setup-hooks."
+    },
+    {
+      "step": 6,
+      "rule": "If prompt is empty: with --execute return usage message; otherwise run fix flow."
+    },
+    {
+      "step": 7,
+      "rule": "If prompt is non-empty and --execute is not set: attempt memory prompt parser first, then self-aware parser."
+    },
+    {
+      "step": 8,
+      "rule": "If still unresolved and --execute is not set and prompt looks fix-like, run fix flow."
+    },
+    {
+      "step": 9,
+      "rule": "If --execute is set, run execute flow; else run find flow."
+    }
+  ],
+  "intents": [
+    "fix",
+    "find",
+    "run",
+    "config_show",
+    "config_set",
+    "diagnose",
+    "setup_hooks"
+  ],
+  "provider_intents": [
+    "fix",
+    "find"
+  ],
+  "provider_intent_note": "Even run-flow provider lookups use provider intent=find; provider surface is fix/find only.",
+  "modes": {
+    "suggest": "never execute",
+    "confirm": "ask before execute",
+    "yolo": "execute without prompt (subject to high-risk safety override)"
+  },
+  "defaults": {
+    "locale": "auto",
+    "provider": "auto",
+    "mode": "confirm",
+    "fix_model": "auto-main",
+    "find_model": "auto-fast",
+    "fix_thinking": "medium",
+    "find_thinking": "minimal",
+    "find_min_confidence": 0.6,
+    "fix_min_confidence": 0.7,
+    "find_max_results": 8,
+    "find_ai_rerank": "auto",
+    "ui_backend": "bubbletea",
+    "system_enable_context": true,
+    "system_auto_train": true,
+    "system_refresh_hours": 168,
+    "system_max_prompt_items": 16,
+    "safety_redact_secrets": true,
+    "safety_block_high_risk": true,
+    "safety_allow_yolo_high_risk": false,
+    "ai_min_confidence": 0.6,
+    "ai_allow_suggest_execution": false
+  },
+  "flags": {
+    "--model": {
+      "type": "string",
+      "effect": "override model alias for this invocation",
+      "save_target": "fix.model or find.model based on --intent or inferred target"
+    },
+    "--thinking": {
+      "type": "string",
+      "effect": "override thinking level for this invocation",
+      "expected_values": [
+        "minimal",
+        "low",
+        "medium",
+        "high"
+      ],
+      "save_target": "fix.thinking or find.thinking based on --intent or inferred target"
+    },
+    "--provider": {
+      "type": "string",
+      "effect": "override provider order preference",
+      "common_values": [
+        "auto",
+        "codex",
+        "claude",
+        "ew",
+        "openrouter"
+      ],
+      "save_target": "provider"
+    },
+    "--locale": {
+      "type": "string",
+      "effect": "override locale for this invocation",
+      "common_values": [
+        "auto",
+        "en",
+        "en-US",
+        "hi",
+        "hi-IN"
+      ],
+      "save_target": "locale"
+    },
+    "--mode": {
+      "type": "string",
+      "effect": "override execution mode for this invocation",
+      "allowed_values": [
+        "suggest",
+        "confirm",
+        "yolo"
+      ],
+      "save_target": "mode"
+    },
+    "--ui": {
+      "type": "string",
+      "effect": "override UI backend",
+      "allowed_values": [
+        "auto",
+        "bubbletea",
+        "huh",
+        "tview",
+        "plain"
+      ],
+      "save_target": "ui.backend"
+    },
+    "--intent": {
+      "type": "enum",
+      "allowed_values": [
+        "fix",
+        "find"
+      ],
+      "effect": "target for --model/--thinking save operations"
+    },
+    "--save": {
+      "type": "bool",
+      "effect": "persist override changes to config"
+    },
+    "--yes": {
+      "type": "bool",
+      "effect": "auto-confirm execution prompts"
+    },
+    "--json": {
+      "type": "bool",
+      "effect": "machine-readable output"
+    },
+    "--dry-run": {
+      "type": "bool",
+      "effect": "never execute; emit planned command"
+    },
+    "--offline": {
+      "type": "bool",
+      "effect": "skip provider fallback; use local memory/history/deterministic logic only"
+    },
+    "--version": {
+      "type": "bool",
+      "effect": "print version"
+    },
+    "--copy": {
+      "type": "bool",
+      "effect": "copy suggested command to clipboard when platform tool exists"
+    },
+    "--quiet": {
+      "type": "bool",
+      "effect": "emit command-only stdout"
+    },
+    "--execute": {
+      "type": "bool",
+      "effect": "run selected command flow instead of suggest-only find flow"
+    },
+    "--show-config": {
+      "type": "bool",
+      "effect": "print effective config and path"
+    },
+    "--doctor": {
+      "type": "bool",
+      "effect": "run diagnostics"
+    },
+    "--setup-hooks": {
+      "type": "bool",
+      "effect": "print shell hook snippet"
+    }
+  },
+  "flag_interactions": [
+    "--json disables interactive picker and interactive confirmation UI.",
+    "--quiet disables interactive picker and emits command-only output.",
+    "--execute with empty prompt returns guidance message.",
+    "--save without changes is a no-op.",
+    "--save with model/thinking targets fix or find by: explicit --intent, else inferred target.",
+    "Inferred save target defaults to fix when prompt is empty or fix-like; otherwise find.",
+    "On first interactive run, ew captures a safe local system profile and asks user confirmation (accept/disable/edit note).",
+    "Utility flags short-circuit normal find/fix/run paths."
+  ],
+  "config_surface": {
+    "flag_save_keys": [
+      "provider",
+      "locale",
+      "mode",
+      "ui.backend",
+      "fix.model",
+      "fix.thinking",
+      "find.model",
+      "find.thinking"
+    ],
+    "full_set_api_keys": [
+      "locale",
+      "provider",
+      "mode",
+      "ui.backend",
+      "fix.model",
+      "fix.thinking",
+      "fix.min_confidence",
+      "find.model",
+      "find.thinking",
+      "system.enable_context",
+      "system.auto_train",
+      "system.refresh_hours",
+      "system.max_prompt_items",
+      "find.min_confidence",
+      "find.max_results",
+      "ai.min_confidence",
+      "ai.allow_suggest_execution",
+      "providers.<name>.model",
+      "providers.<name>.thinking",
+      "providers.<name>.type",
+      "providers.<name>.command",
+      "providers.<name>.model_flag",
+      "providers.<name>.thinking_flag",
+      "providers.<name>.enabled",
+      "providers.<name>.args",
+      "providers.<name>.models.<alias>.provider_model",
+      "providers.<name>.models.<alias>.thinking",
+      "providers.<name>.models.<alias>.speed",
+      "providers.<name>.models.<alias>.description"
+    ],
+    "save_mechanics": [
+      "config writes are atomic: temp file + rename",
+      "config file mode is 0600",
+      "config directory mode is 0700"
+    ]
+  },
+  "self_actions": {
+    "enabled_only_when": "--execute is not set",
+    "show_config": "ew --show-config",
+    "doctor": "ew --doctor",
+    "setup_hooks": "ew --setup-hooks",
+    "execute_query": "ew --execute <english request>",
+    "save_examples": [
+      "ew --provider codex --save",
+      "ew --mode yolo --save",
+      "ew --locale hi --save",
+      "ew --intent fix --model haiku --save",
+      "ew --intent find --thinking minimal --save",
+      "ew --ui bubbletea --save",
+      "ew disable system context for ew and save",
+      "ew enable auto train for system profile and save"
+    ],
+    "natural_language_config_parser": {
+      "status": "supported for self-aware prompts; flags are preferred for persistent config updates",
+      "recognized_change_domains": [
+        "provider",
+        "mode",
+        "ui.backend",
+        "locale",
+        "system.enable_context",
+        "system.auto_train",
+        "system.refresh_hours",
+        "fix/find model",
+        "fix/find thinking"
+      ],
+      "persist_rules": [
+        "persist=true when prompt includes save/persist/remember/default keywords",
+        "persist=true for imperative phrasing unless prompt is question-like",
+        "when persist=false, ew reports parsed changes but does not write config"
+      ]
+    }
+  },
+  "memory_actions": {
+    "enabled_only_when": "--execute is not set",
+    "actions": [
+      "remember",
+      "show",
+      "forget",
+      "promote",
+      "demote"
+    ],
+    "english_examples": [
+      "ew remember push current branch means git push origin HEAD",
+      "ew show memory for push current branch",
+      "ew prefer git push origin HEAD for push current branch",
+      "ew demote git push origin master for push current branch",
+      "ew forget memory for push current branch"
+    ],
+    "behavior_notes": [
+      "memory store is queried before history/provider fallback",
+      "successful execute outcomes reinforce memory automatically"
+    ]
+  },
+  "localization": {
+    "supported_builtin_locales": [
+      "en",
+      "hi"
+    ],
+    "locale_resolution_order": [
+      "--locale flag",
+      "config.locale",
+      "EW_LOCALE",
+      "LC_ALL",
+      "LC_MESSAGES",
+      "LANG"
+    ],
+    "community_override_path": "<config_dir>/locales/<locale>.json"
+  },
+  "provider_architecture": {
+    "type": "registry",
+    "adapter_types": [
+      "command",
+      "builtin"
+    ],
+    "default_provider_order_when_auto": [
+      "preferred flag provider (if set)",
+      "config.provider (if not auto)",
+      "codex",
+      "claude",
+      "ew",
+      "remaining configured providers (sorted)"
+    ],
+    "config_path_prefix": "providers.<provider_name>",
+    "model_path_prefix": "providers.<provider_name>.models.<model_alias>",
+    "model_alias_rules": [
+      "auto-fast selects a fast/balanced model alias when available",
+      "auto-main selects a quality/balanced model alias when available",
+      "unknown requested alias falls back to provider default alias",
+      "provider model alias may map to concrete provider_model"
+    ],
+    "thinking_normalization": {
+      "codex": {
+        "minimal_or_low": "low",
+        "medium": "medium",
+        "high_or_above": "high"
+      },
+      "claude": {
+        "minimal_or_low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh_or_max": "max"
+      }
+    }
+  },
+  "prompt_envelope": {
+    "wrapper_prefix": "EW_SELF_KNOWLEDGE_JSON:",
+    "task_prefix": "TASK:",
+    "find_prompt_shape": "Return only JSON matching schema. Find the best shell command for this request.",
+    "fix_prompt_shape": "Return only JSON matching schema. Diagnose and fix failed shell command.",
+    "strict_requirement": "provider output must be valid structured JSON"
+  },
+  "output_contract": {
+    "json_fields": [
+      "action",
+      "command",
+      "reason",
+      "risk",
+      "confidence",
+      "needs_confirmation"
+    ],
+    "allowed_values": {
+      "action": [
+        "ask",
+        "suggest",
+        "run"
+      ],
+      "risk": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "confidence_range": "0.0 to 1.0"
+    },
+    "action_rules": [
+      "action=run means runnable command candidate",
+      "action=suggest means suggestion; execution may be blocked by policy",
+      "action=ask means manual confirmation requested"
+    ],
+    "normalization_rules": [
+      "aliases like execute/fix/apply normalize to run",
+      "empty or unknown action normalizes to ask",
+      "if action=run and needs_confirmation=true, it is downgraded to suggest"
+    ]
+  },
+  "safety": {
+    "redact_secrets": true,
+    "block_high_risk": true,
+    "allow_yolo_high_risk": false,
+    "redaction_points": [
+      "provider prompts are redacted before external provider calls when enabled",
+      "hook events are redacted before writing command history"
+    ],
+    "redaction_patterns": [
+      "token/secret/password/api_key/access_key key-value pairs",
+      "Authorization: Bearer <token>",
+      "flag-style secrets such as --token=..., --password ..., -p ..., -k ..., -t ..., -s ..."
+    ],
+    "query_command_guardrails": [
+      "non-destructive queries filter destructive and high-risk command candidates",
+      "destructive/high-risk commands are allowed only for explicit destructive intent",
+      "high-risk signals include patterns like rm -rf, mkfs, dd if=, shutdown, reboot"
+    ],
+    "destructive_command_patterns": [
+      "rm",
+      "rmdir",
+      "git clean",
+      "git reset --hard",
+      "git checkout --",
+      "dropdb",
+      "kubectl delete",
+      "terraform destroy",
+      "docker system prune"
+    ],
+    "execution_policy": [
+      "mode suggest never executes",
+      "mode confirm prompts unless --yes",
+      "mode yolo executes unless downgraded by high-risk safety policy",
+      "if command risk is high and allow_yolo_high_risk is false, yolo is forced to confirm"
+    ],
+    "ai_gate_policy": [
+      "provider confidence must meet intent threshold",
+      "action=suggest is non-runnable when ai.allow_suggest_execution=false",
+      "needs_confirmation=true forces confirm mode",
+      "invalid/empty command is rejected"
+    ]
+  },
+  "ui_contract": {
+    "backends": [
+      "auto",
+      "bubbletea",
+      "huh",
+      "tview",
+      "plain"
+    ],
+    "interactive_requirements": [
+      "stdin and stdout must be terminal devices",
+      "--json and --quiet disable interactive UI"
+    ],
+    "auto_backend_order": [
+      "bubbletea",
+      "huh",
+      "tview"
+    ],
+    "fallback_policy": "If selected interactive backend fails, ew retries other interactive backends before plain fallback.",
+    "plain_backend": "never opens interactive selector/confirmation UI"
+  },
+  "diagnostics_and_hooks": {
+    "setup_hooks": [
+      "prefers _ew hook-snippet --shell <shell>",
+      "falls back to in-process snippet generation for zsh/bash/fish"
+    ],
+    "doctor": [
+      "prefers _ew doctor",
+      "falls back to in-process diagnostic checks"
+    ],
+    "hook_event_capture": [
+      "stores events in state/events.jsonl",
+      "ignores ew/_ew internal commands",
+      "uses latest non-zero exit event for fix flow"
+    ],
+    "fix_fallback_windows": {
+      "captured_failure_max_age_minutes": 60,
+      "recent_history_inference_window_seconds": 90
+    }
+  },
+  "files_and_paths": {
+    "config_file": "<config_dir>/config.toml",
+    "state_dir": "<state_dir>/",
+    "event_log": "<state_dir>/events.jsonl",
+    "memory_store": "<state_dir>/memory.json",
+    "system_profile_store": "<state_dir>/system_profile.json",
+    "config_permissions": "0600",
+    "state_file_permissions": "0600"
+  },
+  "environment_variables": [
+    "EW_LOCALE",
+    "EW_SESSION_ID",
+    "EW_LOADER",
+    "EW_BUILTIN_RULES_FILE",
+    "SHELL",
+    "LANG",
+    "LC_ALL",
+    "LC_MESSAGES",
+    "COMSPEC"
+  ],
+  "examples": {
+    "find": [
+      "ew find my global gitignore file",
+      "ew how to git push current branch"
+    ],
+    "run": [
+      "ew --execute clear aws vault",
+      "ew --execute logout from aws sso"
+    ],
+    "fix": [
+      "ew",
+      "ew fix using profile staging"
+    ],
+    "config_persist": [
+      "ew --provider codex --save",
+      "ew --intent fix --model auto-main --thinking high --save",
+      "ew --intent find --model auto-fast --thinking minimal --save",
+      "ew --ui bubbletea --save",
+      "ew --locale hi --save"
+    ],
+    "utility": [
+      "ew --show-config",
+      "ew --doctor",
+      "ew --setup-hooks"
+    ],
+    "machine_output": [
+      "ew --json logout from aws sso",
+      "ew --quiet fetch unshallow git origin"
+    ]
+  },
+  "anti_hallucination_rules": [
+    "Never invent user-facing subcommands.",
+    "Never output commands requiring fictional ew verbs.",
+    "Respect exact output JSON schema when returning provider resolutions.",
+    "Return one runnable command string, not a command bundle.",
+    "Prefer safest command that solves the user request.",
+    "Do not suggest destructive/high-risk commands unless user intent is explicitly destructive.",
+    "If constraints block auto-run, respond with action=ask or action=suggest and clear reason."
+  ],
+  "llm_behavior_priorities": [
+    "1) Contract correctness over creativity",
+    "2) Safety and reversibility over aggressiveness",
+    "3) Concrete runnable command over long explanation",
+    "4) Respect mode/policy gates before execution assumptions",
+    "5) Keep outputs deterministic and schema-compliant"
+  ]
+}
